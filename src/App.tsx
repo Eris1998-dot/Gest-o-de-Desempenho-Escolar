@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import type { Classroom, ActivityRecord, Student, PeriodFilter } from './types';
 import { generateClassroomPDF } from './pdfGenerator';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { StudentReportModal } from './components/StudentReportModal';
 
 const periodLabels: Record<string, string> = {
   'all': 'Todos os Períodos',
@@ -42,6 +43,9 @@ function App() {
 
   // Filter
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+
+  // Student Report Modal
+  const [showStudentReport, setShowStudentReport] = useState(false);
 
   // Backup / Restore
   const handleExportBackup = () => {
@@ -316,6 +320,14 @@ function App() {
                 </button>
               )}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowStudentReport(true)}
+                  className="px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-lg transition text-sm flex items-center gap-1 shadow-lg shadow-blue-500/25"
+                  title="Relatório de aluno"
+                >
+                  <i className="fas fa-user-graduate"></i>
+                  <span className="hidden md:inline">Relatório</span>
+                </button>
                 <button
                   onClick={handleExportBackup}
                   className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition text-sm flex items-center gap-1"
@@ -719,6 +731,14 @@ function App() {
           </>
         )}
       </main>
+
+      {/* Modal de Relatório do Aluno */}
+      {showStudentReport && (
+        <StudentReportModal
+          classrooms={classrooms}
+          onClose={() => setShowStudentReport(false)}
+        />
+      )}
     </div>
   );
 }
