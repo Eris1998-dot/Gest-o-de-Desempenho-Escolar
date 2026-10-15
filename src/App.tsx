@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Classroom, ActivityRecord, Student, PeriodFilter } from './types';
 import { generateClassroomPDF } from './pdfGenerator';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
 const periodLabels: Record<string, string> = {
   'all': 'Todos os Períodos',
@@ -15,8 +16,8 @@ const periodLabels: Record<string, string> = {
 };
 
 function App() {
-  // Classrooms state
-  const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  // Classrooms state - salvo no localStorage
+  const [classrooms, setClassrooms] = useLocalStorage<Classroom[]>('gestao-desempenho-classrooms', []);
   const [selectedClassroomId, setSelectedClassroomId] = useState<number | null>(null);
   const [showClassroomForm, setShowClassroomForm] = useState(false);
   const [classroomForm, setClassroomForm] = useState({
@@ -41,6 +42,46 @@ function App() {
 
   // Filter
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('all');
+
+  // Backup / Restore
+  const handleExportBackup = () => {
+    const data = JSON.stringify(classrooms, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_turmas_${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBackup = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const data = JSON.parse(ev.target?.result as string);
+          if (Array.isArray(data)) {
+            if (confirm(`Importar ${data.length} turma(s)? Os dados atuais serão substituídos.`)) {
+              setClassrooms(data);
+              setSelectedClassroomId(null);
+            }
+          } else {
+            alert('Arquivo inválido.');
+          }
+        } catch {
+          alert('Erro ao ler o arquivo. Verifique se é um backup válido.');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
 
   // Derived
   const selectedClassroom = classrooms.find(c => c.id === selectedClassroomId) || null;
@@ -264,15 +305,39 @@ function App() {
                 <p className="text-sm text-purple-300">Organize turmas, atividades e gere relatórios</p>
               </div>
             </div>
-            {selectedClassroom && (
-              <button
-                onClick={() => setSelectedClassroomId(null)}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition text-sm flex items-center gap-2"
-              >
-                <i className="fas fa-arrow-left"></i>
-                Voltar às Turmas
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {selectedClassroom && (
+                <button
+                  onClick={() => setSelectedClassroomId(null)}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition text-sm flex items-center gap-2"
+                >
+                  <i className="fas fa-arrow-left"></i>
+                  Voltar às Turmas
+                </button>
+              )}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleExportBackup}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition text-sm flex items-center gap-1"
+                  title="Exportar backup"
+                >
+                  <i className="fas fa-download"></i>
+                  <span className="hidden md:inline">Backup</span>
+                </button>
+                <button
+                  onClick={handleImportBackup}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition text-sm flex items-center gap-1"
+                  title="Importar backup"
+                >
+                  <i className="fas fa-upload"></i>
+                  <span className="hidden md:inline">Restaurar</span>
+                </button>
+              </div>
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
+                <i className="fas fa-cloud-check text-emerald-400 text-xs"></i>
+                <span className="text-xs text-emerald-300">Salvo localmente</span>
+              </div>
+            </div>
           </div>
         </div>
       </header>
